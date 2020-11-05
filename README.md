@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/gabcoelho/FaceMaskReminder/blob/main/LICENSE.md">
-    <img src="https://img.shields.io/badge/License-MIT%202.0-blue.svg" alt="This application is released under the MIT license." />
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="This application is released under the MIT license." />
   </a>
 </p>
 
