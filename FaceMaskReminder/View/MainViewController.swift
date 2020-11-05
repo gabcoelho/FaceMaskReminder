@@ -10,13 +10,17 @@ import UIKit
 
 class MainViewController: UIViewController {
     
+    // MARK: - Properties
+
     private var tableViewIdentifier = "SettingsTableViewCell"
     private var settingsData = SettingsData()
     private var dependencies = DependenciesManager()
     
+    // MARK: - Views
+
     private lazy var logoImageView: UIImageView = {
         let imageView = UIImageView()
-        imageView.image = UIImage(named: "face-mask")
+        imageView.image = UIImage(named: "logo")
         return imageView
     }()
     
@@ -75,6 +79,8 @@ class MainViewController: UIViewController {
         return tableView
     }()
 
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
         additionalConfigurations()
@@ -83,15 +89,7 @@ class MainViewController: UIViewController {
         dependencies.setup()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-    }
-    
-    private func additionalConfigurations() {
-        navigationController?.navigationBar.topItem?.title = "Bem Vindo!"
-        navigationController?.navigationBar.prefersLargeTitles = true
-        addingTableViewLayerConfigurations()
-    }
+    // MARK: - Actions For Buttons
     
     @objc func sumDistanceButton() {
         guard let sum = Int(distanceLabel.text ?? "") else { return }
@@ -101,15 +99,25 @@ class MainViewController: UIViewController {
     
     @objc func substractDistanceButton() {
         guard let sum = Int(distanceLabel.text ?? "") else { return }
-        distanceLabel.text = "\(sum - 10)"
+        if sum - 10 < 0 {
+            let alertController = UIAlertController(title: "", message: "-10 metros? 🤔", preferredStyle: .alert)
+            let okAction = UIAlertAction(title: "Cancelar", style: .default)
+            alertController.addAction(okAction)
+            present(alertController, animated: true, completion: nil)
+            distanceLabel.text = "\(sum)"
+        } else {
+            distanceLabel.text = "\(sum - 10)"
+        }
         updateDistanceValue()
     }
     
-    func updateDistanceValue() {
+    private func updateDistanceValue() {
         guard let distance = Double(distanceLabel.text ?? "") else { return }
         dependencies.locationManager?.distanceFilter = distance
     }
 }
+
+// MARK: - TableView DataSource & Delegate
 
 extension MainViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -158,12 +166,18 @@ extension MainViewController {
         view.addSubview(distanceDescriptionLabel)
     }
     
+    private func additionalConfigurations() {
+        navigationController?.navigationBar.topItem?.title = "Bem Vindo!"
+        navigationController?.navigationBar.prefersLargeTitles = true
+        addingTableViewLayerConfigurations()
+    }
+    
     private func setupConstraints() {
         logoImageView.anchor(
             top: view.safeAreaLayoutGuide.topAnchor,
             topConstant: 50,
-            widthConstant: 150,
-            heightConstant: 150
+            widthConstant: 270,
+            heightConstant: 220
         )
         logoImageView.anchorCenterXToSuperview()
         

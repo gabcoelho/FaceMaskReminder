@@ -11,8 +11,12 @@ import CoreLocation
 
 class SettingsTableViewCell: UITableViewCell {
 
+    // MARK: - Properties
+
     private var type: SwitchType?
     private var dependenciesManager: DependenciesManager?
+    
+    // MARK: - Views
     
     private lazy var iconImageView: UIImageView = {
         let image = UIImageView()
@@ -35,6 +39,8 @@ class SettingsTableViewCell: UITableViewCell {
         return switchButton
     }()
     
+    // MARK: - Initialization
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupViews()
@@ -43,6 +49,8 @@ class SettingsTableViewCell: UITableViewCell {
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    // MARK: - Setup Cell
     
     func setupCell(icon: String, type: SwitchType, dependencies: DependenciesManager?) {
         settingsLabel.text = type.rawValue
@@ -53,7 +61,7 @@ class SettingsTableViewCell: UITableViewCell {
     }
     
     @objc func didToggleSwitch() {
-//        updateAuthorizations()
+        updateAuthorizations()
     }
     
     private func setupSwitchForType() {
@@ -71,14 +79,86 @@ class SettingsTableViewCell: UITableViewCell {
     private func updateAuthorizations() {
         guard let type = type else { return }
         switch type {
-        case .notification:
-            if settingEnablerSwitch.isOn == false { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["attention"])
-            }
-        case .location: break
-//            dependenciesManager?.locationManager?.requestLocation()
+        case .notification: break
+        case .location:
+            settingEnablerSwitch.isOn ? dependenciesManager?.locationManager?.startUpdatingLocation() : dependenciesManager?.locationManager?.stopUpdatingLocation()
         }
     }
     
+    // MARK: - Verify Authorization for Notifications
+    
+    private func verifyNotificationAuthorizationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional:
+                DispatchQueue.main.async {
+                    self.settingEnablerSwitch.isOn = true
+                }
+            case .denied, .notDetermined, .ephemeral:
+                DispatchQueue.main.async {
+                    self.settingEnablerSwitch.isOn = false
+                }
+            @unknown default:
+                DispatchQueue.main.async {
+                    self.settingEnablerSwitch.isOn = false
+                }
+            }
+        }
+    }
+    
+    // MARK: - Verify Authorization for Location
+
+    private func verifyLocationAuthorizationStatus() -> Bool {
+        switch CLLocationManager.authorizationStatus() {
+        case .authorizedAlways, .authorizedWhenInUse, .restricted:
+            dependenciesManager?.locationManager?.startMonitoringVisits()
+            dependenciesManager?.locationManager?.startUpdatingLocation()
+            dependenciesManager?.locationManager?.allowsBackgroundLocationUpdates = true
+            dependenciesManager?.locationManager?.pausesLocationUpdatesAutomatically = false
+            return true
+        case .notDetermined, .denied:
+            return false
+        default: return false
+        }
+    }
+
+}
+
+// MARK: - Location Delegate
+
+extension SettingsTableViewCell: LocationAuthorization {
+    func updateLocationAuthorization() {
+        DispatchQueue.main.async {
+            self.settingEnablerSwitch.isOn = self.verifyLocationAuthorizationStatus()
+        }
+    }
+}
+
+// MARK: - Notification Delegate
+
+extension SettingsTableViewCell: NotificationAuthorization {
+    func updateNotificationAuthorization() {
+        verifyNotificationAuthorizationStatus()
+    }
+    
+    func newLocationReceived() {
+        if type == .notification && settingEnablerSwitch.isOn {
+            let content = UNMutableNotificationContent()
+            content.title = "Atenção! 😷"
+            content.body = "Percebemos que você está saindo, lembrou de pegar uma máscara?"
+            content.sound = .default
+            
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.30, repeats: false)
+            let request = UNNotificationRequest(identifier: "attention", content: content, trigger: trigger)
+            
+            dependenciesManager?.center?.add(request, withCompletionHandler: nil)
+        }
+    }
+}
+
+// MARK: - Setup Views
+
+extension SettingsTableViewCell {
     private func setupViews() {
         contentView.addSubview(iconImageView)
         contentView.addSubview(settingsLabel)
@@ -107,68 +187,5 @@ class SettingsTableViewCell: UITableViewCell {
             rightConstant: 10
         )
         settingEnablerSwitch.anchorCenterYToSuperview()
-    }
-    
-    
-    private func verifyNotificationAuthorizationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            switch settings.authorizationStatus {
-            case .authorized, .provisional:
-                DispatchQueue.main.async {
-                    self.settingEnablerSwitch.isOn = true
-                }
-            case .denied, .notDetermined, .ephemeral:
-                DispatchQueue.main.async {
-                    self.settingEnablerSwitch.isOn = false
-                }
-            @unknown default:
-                DispatchQueue.main.async {
-                    self.settingEnablerSwitch.isOn = false
-                }
-            }
-        }
-    }
-    
-    private func verifyLocationAuthorizationStatus() -> Bool {
-        switch CLLocationManager.authorizationStatus() {
-        case .authorizedAlways, .authorizedWhenInUse, .restricted:
-            dependenciesManager?.locationManager?.startMonitoringVisits()
-            dependenciesManager?.locationManager?.startUpdatingLocation()
-            dependenciesManager?.locationManager?.allowsBackgroundLocationUpdates = true
-            dependenciesManager?.locationManager?.pausesLocationUpdatesAutomatically = false
-            return true
-        case .notDetermined, .denied:
-            return false
-        default: return false
-        }
-    }
-
-}
-
-extension SettingsTableViewCell: LocationAuthorization {
-    func updateLocationAuthorization() {
-        DispatchQueue.main.async {
-            self.settingEnablerSwitch.isOn = self.verifyLocationAuthorizationStatus()
-        }
-    }
-}
-
-extension SettingsTableViewCell: NotificationAuthorization {
-    func updateNotificationAuthorization() {
-        verifyNotificationAuthorizationStatus()
-    }
-    
-    func newLocationReceived() {
-        if type == .notification && settingEnablerSwitch.isOn {
-            let content = UNMutableNotificationContent()
-            content.title = "Atenção!"
-            content.body = "Percebemos que você está saindo, lembrou de pegar uma máscara?"
-            content.sound = .default
-            
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.30, repeats: false)
-            let request = UNNotificationRequest(identifier: "attention", content: content, trigger: trigger)
-            
-            dependenciesManager?.center?.add(request, withCompletionHandler: nil)
-        }
     }
 }

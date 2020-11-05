@@ -20,12 +20,16 @@ protocol NotificationAuthorization: class {
 
 class DependenciesManager: NSObject, CLLocationManagerDelegate {
     
+    // MARK: - Properties
+    
     private(set) var center: UNUserNotificationCenter?
     private(set) var locationManager: CLLocationManager?
     private(set) var geoCoder: CLGeocoder?
 
     weak var locationDelegate: LocationAuthorization?
     weak var notificationDelegate: NotificationAuthorization?
+    
+    // MARK: - Initialization & Setup
     
     override init() {
         super.init()
@@ -55,9 +59,6 @@ extension DependenciesManager {
         
         geoCoder?.reverseGeocodeLocation(location) { placemarks, _ in
             self.notificationDelegate?.newLocationReceived()
-//            if let place = placemarks?.first {
-//                let newVisit = Visit(coordinates: location.coordinate, arrivalDate: Date(), departureDate: Date())
-//            }
         }
     }
 
